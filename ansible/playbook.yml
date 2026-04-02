@@ -221,10 +221,10 @@
       until: container_check.stdout != ""
       become: yes
 
-    - name: Wait for app to respond on port 8000
+    - name: Wait for app to respond on port 80
       wait_for:
         host: 127.0.0.1
-        port: 8000
+        port: 80
         timeout: 120
         delay: 10
       register: port_check
