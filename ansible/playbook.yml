@@ -1,0 +1,241 @@
+---
+- name: Deploy python in Docker on EC2
+  hosts: all
+  become: yes
+  vars:
+    project: "{{ lookup('env', 'PROJECT_NAME') }}"
+    ansible_user: ubuntu
+    app_dir: /opt/app
+
+  tasks:
+    - name: Install apt dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+        update_cache: yes
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu jammy stable"
+        state: present
+
+    - name: Install Docker CE
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: yes
+
+    - name: Start and enable Docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    - name: Reset SSH connection so group change takes effect
+      meta: reset_connection
+
+    - name: Wipe old app directory
+      file:
+        path: "{{ app_dir }}"
+        state: absent
+      ignore_errors: yes
+
+    - name: Recreate app directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy all project files to server
+      copy:
+        src: ../
+        dest: "{{ app_dir }}/"
+        mode: '0755'
+
+    - name: Write .env file with database secrets
+      copy:
+        content: |
+          DATABASE_URL={{ database_url | default('') }}
+          MONGO_URI={{ mongo_uri | default('') }}
+          DB_HOST={{ db_host | default('') }}
+          DB_PORT={{ db_port | default('') }}
+          DB_NAME={{ db_name | default('') }}
+          DB_USER={{ db_user | default('') }}
+          DB_PASSWORD={{ db_password | default('') }}
+          DB_TYPE={{ db_type | default('') }}
+          DB_USERNAME={{ db_username | default('') }}
+        dest: "{{ app_dir }}/.env"
+        mode: '0600'
+
+    - name: Install local database if requested
+      block:
+        - name: Install PostgreSQL
+          apt:
+            name:
+              - postgresql
+              - postgresql-contrib
+              - python3-psycopg2
+            state: present
+            update_cache: yes
+          when: db_type | default('') in ['postgres', 'postgresql']
+
+        - name: Start and enable PostgreSQL
+          service:
+            name: postgresql
+            state: started
+            enabled: yes
+          when: db_type | default('') in ['postgres', 'postgresql']
+
+        - name: Create PostgreSQL user
+          shell: |
+            sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='{{ db_username | default(db_user | default('appuser')) }}'" | grep -q 1 || \
+            sudo -u postgres psql -c "CREATE USER {{ db_username | default(db_user | default('appuser')) }} WITH PASSWORD '{{ db_password | default('') }}';"
+          when: db_type | default('') in ['postgres', 'postgresql']
+          ignore_errors: yes
+
+        - name: Create PostgreSQL database
+          shell: |
+            sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='{{ db_name | default('appdb') }}'" | grep -q 1 || \
+            sudo -u postgres psql -c "CREATE DATABASE {{ db_name | default('appdb') }} OWNER {{ db_username | default(db_user | default('appuser')) }};"
+          when: db_type | default('') in ['postgres', 'postgresql']
+          ignore_errors: yes
+
+        - name: Install MySQL
+          apt:
+            name:
+              - mysql-server
+              - python3-mysqldb
+            state: present
+            update_cache: yes
+          when: db_type | default('') in ['mysql']
+
+        - name: Start and enable MySQL
+          service:
+            name: mysql
+            state: started
+            enabled: yes
+          when: db_type | default('') in ['mysql']
+
+        - name: Create MySQL database and user
+          shell: |
+            mysql -u root -e "CREATE DATABASE IF NOT EXISTS {{ db_name | default('appdb') }};"
+            mysql -u root -e "CREATE USER IF NOT EXISTS '{{ db_username | default(db_user | default('appuser')) }}'@'localhost' IDENTIFIED BY '{{ db_password | default('') }}';"
+            mysql -u root -e "GRANT ALL PRIVILEGES ON {{ db_name | default('appdb') }}.* TO '{{ db_username | default(db_user | default('appuser')) }}'@'localhost';"
+            mysql -u root -e "FLUSH PRIVILEGES;"
+          when: db_type | default('') in ['mysql']
+          ignore_errors: yes
+
+        - name: Install MongoDB
+          block:
+            - name: Add MongoDB GPG key
+              apt_key:
+                url: https://www.mongodb.org/static/pgp/server-6.0.asc
+                state: present
+
+            - name: Add MongoDB repository
+              apt_repository:
+                repo: "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse"
+                state: present
+
+            - name: Install mongodb-org package
+              apt:
+                name: mongodb-org
+                state: present
+                update_cache: yes
+
+            - name: Start and enable MongoDB
+              service:
+                name: mongod
+                state: started
+                enabled: yes
+          when: db_type | default('') in ['mongodb', 'mongo']
+      when: install_db | default('false') | string | lower in ['true', '1', 'yes']
+
+    - name: Stop existing container
+      shell: docker stop app || true
+
+    - name: Remove existing container
+      shell: docker rm app || true
+
+    - name: Remove old image to force rebuild
+      shell: docker rmi app:latest || true
+
+    - name: Write Dockerfile if not present
+      stat:
+        path: "{{ app_dir }}/Dockerfile"
+      register: dockerfile_stat
+
+    - name: Create default Dockerfile for Python 3.11
+      copy:
+        content: |
+          FROM python:3.11-slim
+          WORKDIR /app
+          COPY . /app/
+          RUN pip install --no-cache-dir -r requirements.txt || true
+          EXPOSE 8000
+          CMD ["gunicorn", "main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000"]
+        dest: "{{ app_dir }}/Dockerfile"
+        mode: '0644'
+      when: not dockerfile_stat.stat.exists
+
+    - name: Build Docker image
+      shell: docker build --no-cache -t app:latest {{ app_dir }}/
+
+    - name: Run Docker container
+      shell: >
+        docker run -d
+        --name app
+        -p 80:8000
+        --env-file {{ app_dir }}/.env
+        --restart always
+        app:latest
+
+    - name: Wait for container to be ready
+      pause:
+        seconds: 10
+
+    - name: Verify container is running
+      shell: docker ps --filter name=app --filter status=running --format '{{ '{{' }}.Names{{ '}}' }}'
+      register: container_check
+      retries: 6
+      delay: 10
+      until: container_check.stdout != ""
+      become: yes
+
+    - name: Wait for app to respond on port 8000
+      wait_for:
+        host: 127.0.0.1
+        port: 8000
+        timeout: 120
+        delay: 10
+      register: port_check
+      ignore_errors: yes
+
+    - name: Show container logs if app did not respond
+      shell: docker logs app --tail 50
+      when: port_check is failed
+      ignore_errors: yes
+
+    - name: Print server IP on success
+      debug:
+        msg: "server_ip={{ ansible_host }}"
+      when: port_check is succeeded
