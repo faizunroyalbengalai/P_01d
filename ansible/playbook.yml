@@ -171,10 +171,10 @@
       when: install_db | default('false') | string | lower in ['true', '1', 'yes']
 
     - name: Stop existing container
-      shell: docker stop app || true
+      shell: docker stop python-app || true
 
     - name: Remove existing container
-      shell: docker rm app || true
+      shell: docker rm python-app || true
 
     - name: Remove old image to force rebuild
       shell: docker rmi app:latest || true
@@ -203,7 +203,7 @@
     - name: Run Docker container
       shell: >
         docker run -d
-        --name app
+        --name python-app
         -p 80:8000
         --env-file {{ app_dir }}/.env
         --restart always
@@ -214,7 +214,7 @@
         seconds: 10
 
     - name: Verify container is running
-      shell: docker ps --filter name=app --filter status=running --format '{{ '{{' }}.Names{{ '}}' }}'
+      shell: docker ps --filter name=python-app --filter status=running --format '{{ '{{' }}.Names{{ '}}' }}'
       register: container_check
       retries: 6
       delay: 10
@@ -231,7 +231,7 @@
       ignore_errors: yes
 
     - name: Show container logs if app did not respond
-      shell: docker logs app --tail 50
+      shell: docker logs python-app --tail 50
       when: port_check is failed
       ignore_errors: yes
 
