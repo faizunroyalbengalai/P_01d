@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>p_01</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #0d1117;
+      color: #e6edf3;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      width: 100%;
+      padding: 2rem;
+    }
+
+    .badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #238636, #2ea043);
+      color: #ffffff;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.9rem;
+      border-radius: 2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 16px;
+      padding: 3rem 3.5rem;
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5),
+                  0 0 0 1px rgba(255, 255, 255, 0.03);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #58a6ff, #bc8cff, #58a6ff);
+      background-size: 200% 100%;
+      animation: shimmer 3s linear infinite;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .project-name {
+      font-size: 3.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.1;
+      margin-bottom: 0.5rem;
+    }
+
+    .divider {
+      width: 48px;
+      height: 2px;
+      background: linear-gradient(90deg, #58a6ff, #bc8cff);
+      border-radius: 2px;
+      margin: 1.5rem auto;
+    }
+
+    .repo-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #8b949e;
+      margin-bottom: 0.5rem;
+    }
+
+    .repo-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 0.55rem 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .repo-icon {
+      width: 16px;
+      height: 16px;
+      fill: #8b949e;
+      flex-shrink: 0;
+    }
+
+    .repo-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #58a6ff;
+      letter-spacing: 0.02em;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+
+    .description {
+      font-size: 0.88rem;
+      color: #8b949e;
+      line-height: 1.7;
+      margin-top: 1.8rem;
+    }
+
+    footer {
+      width: 100%;
+      text-align: center;
+      padding: 1.25rem 2rem;
+      border-top: 1px solid #21262d;
+      color: #484f58;
+      font-size: 0.8rem;
+      letter-spacing: 0.04em;
+    }
+
+    footer span {
+      color: #8b949e;
+      font-weight: 500;
+    }
+
+    footer .heart {
+      color: #da3633;
+      display: inline-block;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50%       { transform: scale(1.25); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="badge">Active Project</div>
+
+    <div class="card">
+      <div class="project-name">p_01</div>
+
+      <div class="divider"></div>
+
+      <div class="repo-label">Repository</div>
+      <div class="repo-row">
+        <svg class="repo-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z"/>
+        </svg>
+        <span class="repo-name">P_01d</span>
+      </div>
+
+      <p class="description">
+        A streamlined, high-performance project built for modern workflows.
+        Explore the repository to dive into the source, track progress,
+        and contribute to the roadmap.
+      </p>
+    </div>
+  </div>
+
+  <footer>
+    <span class="heart">♥</span>&nbsp; Developed by <span>Royal Bengal AI</span>
+  </footer>
+
+</body>
+</html>
